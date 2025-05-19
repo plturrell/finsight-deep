@@ -1,0 +1,149 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aiqtoolkit
+  labels:
+    istio-injection: enabled
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: aiqtoolkit-manager
+  namespace: aiqtoolkit
+spec:
+  hosts:
+  - aiqtoolkit-manager
+  http:
+  - match:
+    - uri:
+        prefix: "/api"
+    route:
+    - destination:
+        host: aiqtoolkit-manager
+        port:
+          number: 8080
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: gateway-error,connect-failure,refused-stream
+  - match:
+    - uri:
+        prefix: "/metrics"
+    route:
+    - destination:
+        host: aiqtoolkit-manager
+        port:
+          number: 9090
+  tcp:
+  - match:
+    - port: 50051
+    route:
+    - destination:
+        host: aiqtoolkit-manager
+        port:
+          number: 50051
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: aiqtoolkit-manager
+  namespace: aiqtoolkit
+spec:
+  host: aiqtoolkit-manager
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 2
+    loadBalancer:
+      simple: LEAST_REQUEST
+    outlierDetection:
+      consecutiveErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 30
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: aiqtoolkit-mtls
+  namespace: aiqtoolkit
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: aiqtoolkit-authz
+  namespace: aiqtoolkit
+spec:
+  selector:
+    matchLabels:
+      app: aiqtoolkit-manager
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/aiqtoolkit/sa/aiqtoolkit-worker"]
+    to:
+    - operation:
+        methods: ["GET", "POST"]
+        paths: ["/api/*"]
+  - from:
+    - source:
+        namespaces: ["istio-system"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/metrics", "/health"]
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: external-gpu-cloud
+  namespace: aiqtoolkit
+spec:
+  hosts:
+  - gpu.cloud.nvidia.com
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  location: MESH_EXTERNAL
+  resolution: DNS
+---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: aiqtoolkit-metrics
+  namespace: aiqtoolkit
+spec:
+  metrics:
+  - providers:
+    - name: prometheus
+    overrides:
+    - match:
+        metric: REQUEST_COUNT
+      tagOverrides:
+        method:
+          value: request.method | "unknown"
+        task_type:
+          value: request.headers["x-task-type"] | "unknown"
+    - match:
+        metric: REQUEST_DURATION
+      tagOverrides:
+        gpu_node:
+          value: request.headers["x-gpu-node"] | "none"

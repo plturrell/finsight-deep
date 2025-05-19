@@ -1,0 +1,56 @@
+[Unit]
+Description=Digital Human Unified Production Backend
+After=network.target redis.service postgresql.service
+Wants=redis.service
+
+[Service]
+Type=notify
+User=aiqtoolkit
+Group=aiqtoolkit
+WorkingDirectory=/opt/aiqtoolkit/digital_human/ui
+Environment="PATH=/opt/aiqtoolkit/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="ENVIRONMENT=production"
+Environment="REDIS_URL=redis://localhost:6379"
+Environment="DATABASE_URL=postgresql://aiqtoolkit:password@localhost/digital_human"
+Environment="JWT_SECRET_FILE=/etc/aiqtoolkit/jwt.secret"
+Environment="SSL_CERT_FILE=/etc/ssl/certs/digitalhuman.crt"
+Environment="SSL_KEY_FILE=/etc/ssl/private/digitalhuman.key"
+
+# Security settings
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/aiqtoolkit/logs /opt/aiqtoolkit/data
+
+# Resource limits
+MemoryLimit=4G
+CPUQuota=200%
+TasksMax=1000
+
+# Start command
+ExecStartPre=/opt/aiqtoolkit/venv/bin/python -m pip install --upgrade -r requirements.txt
+ExecStart=/opt/aiqtoolkit/venv/bin/python api/unified_production_server.py \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 4 \
+    --ssl-keyfile ${SSL_KEY_FILE} \
+    --ssl-certfile ${SSL_CERT_FILE} \
+    --env production
+
+# Restart policy
+Restart=always
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Health check
+ExecStartPost=/usr/bin/curl -f http://localhost:8000/health || exit 1
+
+# Graceful shutdown
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,36 @@
+# Federated Learning Server Configuration
+
+federated_config:
+  rounds: 100
+  clients_per_round: 5
+  min_clients: 3
+  local_epochs: 5
+  batch_size: 32
+  learning_rate: 0.01
+  aggregation_strategy: fedavg  # Options: fedavg, fedprox, fedyogi, scaffold, personalized
+  client_selection: weighted   # Options: random, weighted, quality, resource
+  differential_privacy: true
+  privacy_budget: 10.0
+  adaptive_aggregation: true
+  compression_enabled: true
+  secure_aggregation: false  # Enable for production
+  checkpoint_interval: 10
+  convergence_threshold: 0.001
+
+model:
+  input_size: 784  # MNIST-like input
+  num_classes: 10
+
+api:
+  host: 0.0.0.0
+  port: 8080
+  
+security:
+  enable_tls: false  # Enable for production
+  cert_path: null
+  key_path: null
+  
+monitoring:
+  prometheus_port: 9090
+  enable_metrics: true
+  log_level: INFO

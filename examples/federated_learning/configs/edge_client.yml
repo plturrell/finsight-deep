@@ -1,0 +1,35 @@
+# Edge Client Configuration
+
+edge_config:
+  device_type: workstation  # Options: mobile, iot, embedded, workstation
+  mode: intermittent       # Options: always_connected, intermittent, offline_first
+  sync_interval: 3600      # Sync every hour
+  cache_size_mb: 100
+  offline_queue_size: 1000
+  bandwidth_limit_mbps: null  # No limit
+  power_mode: balanced     # Options: low_power, balanced, performance
+  local_model_path: ~/.aiq/models
+  security_level: standard # Options: standard, high, maximum
+
+federated_config:
+  local_epochs: 5
+  batch_size: 32
+  learning_rate: 0.01
+  differential_privacy: true
+  privacy_budget: 10.0
+  
+server:
+  url: http://localhost:8080
+  
+model:
+  input_size: 784
+  num_classes: 10
+  
+dataset:
+  size: 1000  # Number of samples
+  input_dim: 784
+  num_classes: 10
+  
+logging:
+  level: INFO
+  file: edge_client.log

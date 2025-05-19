@@ -1,0 +1,19 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install fastapi uvicorn httpx websockets
+
+# Copy application
+COPY digital_human_cloud.py /app/
+
+# Set environment variables
+ENV NVIDIA_API_KEY="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"
+ENV TOGETHER_API_KEY="1e961dd58c67427a09c40a09382f8f00e54f39aa8c34ac426fd5579c4effd1b4"
+
+# Expose port
+EXPOSE 8000
+
+# Run application
+CMD ["python", "digital_human_cloud.py"]

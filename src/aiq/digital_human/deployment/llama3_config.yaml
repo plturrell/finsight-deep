@@ -1,0 +1,136 @@
+# Configuration for Digital Human with Llama3-8B-Instruct
+
+# NVIDIA Services Configuration
+nvidia:
+  api_key: ${NVIDIA_API_KEY}
+  nim:
+    endpoint: "https://integrate.api.nvidia.com/v1"
+    model: "meta/llama3-8b-instruct"
+    max_tokens: 2048
+    temperature: 0.7
+    top_p: 0.9
+    stream: true
+  
+  # Audio2Face Configuration
+  audio2face:
+    endpoint: "https://api.nvidia.com/audio2face/v1"
+    model: "audio2face-3d"
+    api_key: ${NVIDIA_API_KEY}
+    
+  # Additional NVIDIA Services
+  riva:
+    endpoint: "https://api.nvidia.com/riva/v1"
+    asr_model: "parakeet-ctc-1.1b"
+    tts_model: "radtts"
+    
+  nemo:
+    endpoint: "https://api.nvidia.com/nemo/v1"
+    retriever_model: "nemo-retriever-qa"
+
+# Model Configuration
+llm:
+  provider: "nvidia-nim"
+  model_name: "meta/llama3-8b-instruct"
+  parameters:
+    max_tokens: 2048
+    temperature: 0.7
+    top_p: 0.9
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+    stop_sequences: ["Human:", "Assistant:"]
+  
+  # System prompts for financial advisor
+  system_prompt: |
+    You are a sophisticated digital human financial advisor powered by advanced AI.
+    You have access to real-time market data, portfolio analysis tools, and risk assessment capabilities.
+    Provide professional, accurate, and helpful financial guidance while maintaining a conversational tone.
+    Always be transparent about limitations and recommend consulting human professionals for critical decisions.
+
+# Conversation Settings
+conversation:
+  context_window: 8192  # Llama3 context window
+  max_history: 10
+  response_format: "structured"
+  enable_reasoning: true
+  enable_verification: true
+  
+# Avatar Configuration
+avatar:
+  type: "audio2face-3d"
+  resolution: [1920, 1080]
+  fps: 30
+  emotion_mapping:
+    positive: ["confident", "optimistic", "pleased"]
+    neutral: ["professional", "attentive", "thoughtful"]
+    negative: ["concerned", "empathetic", "serious"]
+  
+# Financial Analysis
+financial:
+  providers:
+    - name: "nvidia-financial"
+      enabled: true
+    - name: "yahoo-finance"
+      enabled: true
+    - name: "alpha-vantage"
+      enabled: false  # Enable if API key available
+  
+  analysis:
+    monte_carlo_simulations: 1000
+    risk_models: ["var", "cvar", "sharpe"]
+    optimization_goals: ["maximize_return", "minimize_risk", "efficient_frontier"]
+
+# Performance Optimization
+performance:
+  gpu_optimization: true
+  batch_size: 1
+  cache_responses: true
+  cache_ttl: 300
+  
+  # Llama3 specific optimizations
+  quantization: "int8"  # For faster inference
+  gpu_layers: 32  # Number of layers to offload to GPU
+  
+# Deployment Settings
+deployment:
+  replicas: 3
+  gpu_per_replica: 1
+  autoscaling:
+    enabled: true
+    min_replicas: 2
+    max_replicas: 8
+    target_gpu_utilization: 70
+    target_memory_utilization: 80
+
+# Error Handling
+error_handling:
+  max_retries: 3
+  timeout: 30
+  fallback_responses: true
+  graceful_degradation: true
+
+# Monitoring
+monitoring:
+  metrics:
+    - response_time
+    - token_usage
+    - gpu_utilization
+    - error_rate
+    - cache_hit_rate
+  
+  alerts:
+    high_latency: 5000  # ms
+    error_rate: 0.05
+    gpu_memory: 0.9
+
+# Security
+security:
+  api_key_rotation: 90  # days
+  ssl_enabled: true
+  rate_limiting:
+    requests_per_minute: 60
+    tokens_per_minute: 10000
+  
+  content_filtering:
+    enabled: true
+    block_personal_info: true
+    block_inappropriate: true

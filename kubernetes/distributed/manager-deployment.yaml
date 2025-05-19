@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiqtoolkit-manager
+  namespace: aiqtoolkit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aiqtoolkit-manager
+  template:
+    metadata:
+      labels:
+        app: aiqtoolkit-manager
+    spec:
+      containers:
+      - name: manager
+        image: aiqtoolkit/distributed-manager:latest
+        ports:
+        - containerPort: 50051
+          name: grpc
+        - containerPort: 9090
+          name: metrics
+        - containerPort: 8080
+          name: dashboard
+        env:
+        - name: NODE_ROLE
+          value: "manager"
+        - name: ENABLE_TLS
+          value: "true"
+        - name: ENABLE_AUTH
+          value: "true"
+        - name: METRICS_ENABLED
+          value: "true"
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /certs
+          readOnly: true
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: aiqtoolkit-tls-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiqtoolkit-manager
+  namespace: aiqtoolkit
+spec:
+  selector:
+    app: aiqtoolkit-manager
+  ports:
+  - port: 50051
+    targetPort: 50051
+    name: grpc
+  - port: 9090
+    targetPort: 9090
+    name: metrics
+  - port: 8080
+    targetPort: 8080
+    name: dashboard
+  type: LoadBalancer

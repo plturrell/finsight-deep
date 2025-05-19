@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #log { background: #f0f0f0; padding: 10px; height: 400px; overflow-y: auto; }
+        .success { color: green; }
+        .error { color: red; }
+        input, button { padding: 10px; margin: 5px; }
+        input { width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>Digital Human WebSocket Test</h1>
+    
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <span id="status">Disconnected</span>
+    </div>
+    
+    <div>
+        <input type="text" id="message" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    
+    <div id="log"></div>
+    
+    <script>
+        let ws = null;
+        
+        function log(message, type = '') {
+            const logDiv = document.getElementById('log');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = type;
+            msgDiv.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            logDiv.appendChild(msgDiv);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(status) {
+            document.getElementById('status').textContent = status;
+        }
+        
+        function connect() {
+            log('Attempting to connect to ws://localhost:8000/ws');
+            
+            try {
+                ws = new WebSocket('ws://localhost:8000/ws');
+                
+                ws.onopen = () => {
+                    log('Connected!', 'success');
+                    updateStatus('Connected');
+                    
+                    // Send start session
+                    ws.send(JSON.stringify({
+                        type: 'startSession',
+                        sessionId: 'test_' + Date.now()
+                    }));
+                };
+                
+                ws.onmessage = (event) => {
+                    log('Received: ' + event.data, 'success');
+                };
+                
+                ws.onerror = (error) => {
+                    log('Error: ' + error, 'error');
+                    updateStatus('Error');
+                };
+                
+                ws.onclose = () => {
+                    log('Disconnected', 'error');
+                    updateStatus('Disconnected');
+                };
+                
+            } catch (e) {
+                log('Exception: ' + e.message, 'error');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const data = {
+                    type: 'user_message',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(data));
+                log('Sent: ' + JSON.stringify(data));
+                messageInput.value = '';
+            } else {
+                log('Not connected!', 'error');
+            }
+        }
+        
+        // Send message on Enter key
+        document.getElementById('message').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        // Auto-connect on load
+        window.onload = () => connect();
+    </script>
+</body>
+</html>

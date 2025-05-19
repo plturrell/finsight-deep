@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Manager node that coordinates tasks
+  manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.manager-nvidia
+    container_name: aiq-manager-nvidia
+    environment:
+      - NIM_API_KEY=${NIM_API_KEY}
+      - BASE_URL=https://integrate.api.nvidia.com/v1
+      - NODE_TYPE=manager
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    networks:
+      - aiq-nvidia
+    volumes:
+      - ./logs:/app/logs
+
+  # Worker 1
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-nvidia
+    container_name: aiq-worker1-nvidia
+    environment:
+      - NIM_API_KEY=${NIM_API_KEY}
+      - BASE_URL=https://integrate.api.nvidia.com/v1
+      - WORKER_ID=worker-001
+      - MANAGER_HOST=manager
+      - MANAGER_PORT=50051
+    depends_on:
+      - manager
+    networks:
+      - aiq-nvidia
+    volumes:
+      - ./logs:/app/logs
+
+  # Worker 2
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-nvidia
+    container_name: aiq-worker2-nvidia
+    environment:
+      - NIM_API_KEY=${NIM_API_KEY}
+      - BASE_URL=https://integrate.api.nvidia.com/v1
+      - WORKER_ID=worker-002
+      - MANAGER_HOST=manager
+      - MANAGER_PORT=50051
+    depends_on:
+      - manager
+    networks:
+      - aiq-nvidia
+    volumes:
+      - ./logs:/app/logs
+
+  # Simple monitoring
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.monitor-nvidia
+    container_name: aiq-monitor-nvidia
+    ports:
+      - "9090:9090"
+    networks:
+      - aiq-nvidia
+    volumes:
+      - ./metrics:/app/metrics
+
+networks:
+  aiq-nvidia:
+    driver: bridge

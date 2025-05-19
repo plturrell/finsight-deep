@@ -1,0 +1,59 @@
+production:
+  frontend:
+    host: "0.0.0.0"
+    port: 8080
+    cors_origins:
+      - "http://localhost:8080"
+      - "https://your-domain.com"
+    
+  backend:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    ssl:
+      enabled: false
+      cert_file: null
+      key_file: null
+    
+  websocket:
+    ping_interval: 30
+    ping_timeout: 10
+    max_connections: 1000
+    message_size_limit: 1048576  # 1MB
+    
+  avatar:
+    quality: "ultra"
+    fps: 60
+    resolution: "1920x1080"
+    features:
+      - "facial_expressions"
+      - "eye_tracking"
+      - "lip_sync"
+      - "emotion_detection"
+      
+  performance:
+    cache_enabled: true
+    compression: true
+    gpu_acceleration: true
+    
+  security:
+    rate_limiting:
+      enabled: true
+      requests_per_minute: 60
+    auth:
+      enabled: false
+      api_key_header: "X-API-Key"
+      
+  monitoring:
+    enabled: true
+    metrics_endpoint: "/metrics"
+    health_endpoint: "/health"
+    
+  logging:
+    level: "INFO"
+    format: "json"
+    output: "logs/production.log"
+    rotation:
+      enabled: true
+      max_size: "100MB"
+      max_files: 5

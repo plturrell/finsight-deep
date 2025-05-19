@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package nvidia.audio2face.v1;
+
+// NVIDIA Audio2Face-3D Service - Official Protocol Definition
+service Audio2Face {
+  // Process audio data and return facial animation
+  rpc GetFacialAnimation(AudioRequest) returns (AnimationResponse);
+  
+  // Stream audio for real-time animation
+  rpc GetFacialAnimationStream(stream AudioData) returns (stream AnimationData);
+}
+
+// Audio request for single processing
+message AudioRequest {
+  // Audio data in WAV format
+  bytes audio_data = 1;
+  
+  // Model configuration
+  ModelConfig config = 2;
+  
+  // Audio configuration
+  AudioConfig audio_config = 3;
+}
+
+// Streaming audio data
+message AudioData {
+  // Audio chunk
+  bytes data = 1;
+  
+  // Sequence number for ordering
+  int32 sequence_number = 2;
+  
+  // Set to true for the last chunk
+  bool is_last_chunk = 3;
+}
+
+// Model configuration
+message ModelConfig {
+  // Avatar model ID (James, Claire, Mark)
+  string avatar_id = 1;
+  
+  // Enable high quality mode
+  bool high_quality = 2;
+  
+  // Frame rate for animation output
+  float fps = 3;
+  
+  // Enable tongue animation
+  bool enable_tongue = 4;
+  
+  // Expression intensity (0.0 - 1.0)
+  float expression_scale = 5;
+}
+
+// Audio configuration
+message AudioConfig {
+  // Sample rate (16000, 22050, 44100)
+  int32 sample_rate = 1;
+  
+  // Number of channels (1 for mono, 2 for stereo)
+  int32 channels = 2;
+  
+  // Audio format (PCM16, PCM32, FLOAT32)
+  string format = 3;
+  
+  // Language code for lip sync
+  string language_code = 4;
+}
+
+// Animation response
+message AnimationResponse {
+  // Status of the request
+  Status status = 1;
+  
+  // Animation data
+  AnimationData animation = 2;
+  
+  // Error message if any
+  string error_message = 3;
+}
+
+// Streaming animation data
+message AnimationData {
+  // Timestamp for this frame
+  double timestamp = 1;
+  
+  // Blendshape values
+  map<string, float> blendshapes = 2;
+  
+  // Bone transforms for head/neck
+  repeated BoneTransform bones = 3;
+  
+  // Audio-visual synchronization info
+  AudioVisualSync av_sync = 4;
+  
+  // Sequence number matching input
+  int32 sequence_number = 5;
+}
+
+// Bone transform data
+message BoneTransform {
+  // Bone name
+  string name = 1;
+  
+  // Translation
+  Vector3 translation = 2;
+  
+  // Rotation (quaternion)
+  Quaternion rotation = 3;
+  
+  // Scale
+  Vector3 scale = 4;
+}
+
+// 3D vector
+message Vector3 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+// Quaternion for rotation
+message Quaternion {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  float w = 4;
+}
+
+// Audio-visual synchronization data
+message AudioVisualSync {
+  // Current phoneme
+  string phoneme = 1;
+  
+  // Viseme weight
+  float viseme_weight = 2;
+  
+  // Audio amplitude
+  float audio_level = 3;
+}
+
+// Status codes
+enum StatusCode {
+  OK = 0;
+  ERROR = 1;
+  INVALID_AUDIO = 2;
+  INVALID_MODEL = 3;
+  PROCESSING_ERROR = 4;
+}
+
+// Status message
+message Status {
+  StatusCode code = 1;
+  string message = 2;
+}

@@ -1,0 +1,248 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: google-agent-api
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-api-config
+  namespace: google-agent-api
+data:
+  config.yaml: |
+    # Production configuration (loaded from production_config.yaml)
+    ${PRODUCTION_CONFIG}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agent-api-secrets
+  namespace: google-agent-api
+type: Opaque
+stringData:
+  vault-token: "${VAULT_TOKEN}"
+  db-password: "${DB_PASSWORD}"
+  redis-password: "${REDIS_PASSWORD}"
+  rabbitmq-password: "${RABBITMQ_PASSWORD}"
+  google-credentials: "${GOOGLE_APPLICATION_CREDENTIALS}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: google-agent-api
+  namespace: google-agent-api
+  labels:
+    app: google-agent-api
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: google-agent-api
+  template:
+    metadata:
+      labels:
+        app: google-agent-api
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: google-agent-api
+      containers:
+      - name: agent-api
+        image: aiqtoolkit/google-agent-api:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: CONFIG_FILE
+          value: /config/config.yaml
+        - name: VAULT_URL
+          value: "https://vault.internal:8200"
+        - name: VAULT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: agent-api-secrets
+              key: vault-token
+        - name: DB_HOST
+          value: "postgres.internal"
+        - name: DB_USER
+          value: "agent_api"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: agent-api-secrets
+              key: db-password
+        - name: REDIS_HOST
+          value: "redis.internal"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: agent-api-secrets
+              key: redis-password
+        - name: RABBITMQ_HOST
+          value: "rabbitmq.internal"
+        - name: RABBITMQ_USER
+          value: "agent_api"
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: agent-api-secrets
+              key: rabbitmq-password
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /secrets/google-credentials.json
+        - name: JAEGER_COLLECTOR_ENDPOINT
+          value: "http://jaeger-collector.monitoring:14268/api/traces"
+        - name: PROMETHEUS_PUSHGATEWAY_ENDPOINT
+          value: "http://prometheus-pushgateway.monitoring:9091"
+        - name: CLUSTER_NAME
+          value: "production-us-east-1"
+        - name: REGION
+          value: "us-east-1"
+        - name: APP_VERSION
+          value: "1.0.0"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: secrets
+          mountPath: /secrets
+        - name: certs
+          mountPath: /certs
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: agent-api-config
+      - name: secrets
+        secret:
+          secretName: agent-api-secrets
+      - name: certs
+        secret:
+          secretName: agent-api-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: google-agent-api
+  namespace: google-agent-api
+spec:
+  selector:
+    app: google-agent-api
+  ports:
+  - port: 80
+    targetPort: 8080
+    name: http
+  - port: 9090
+    targetPort: 9090
+    name: metrics
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: google-agent-api
+  namespace: google-agent-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: google-agent-api
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: google-agent-api
+  namespace: google-agent-api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: google-agent-api
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: google-agent-api
+  namespace: google-agent-api
+spec:
+  podSelector:
+    matchLabels:
+      app: google-agent-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-controllers
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: databases
+    - namespaceSelector:
+        matchLabels:
+          name: caching
+    - namespaceSelector:
+        matchLabels:
+          name: messaging
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443  # External HTTPS

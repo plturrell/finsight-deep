@@ -1,0 +1,116 @@
+# Production Dockerfile for Digital Human System
+FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
+
+# Set build arguments
+ARG PRODUCTION=true
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    cmake \
+    git \
+    wget \
+    curl \
+    libssl-dev \
+    libffi-dev \
+    libpq-dev \
+    libsndfile1 \
+    ffmpeg \
+    portaudio19-dev \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    postgresql-client \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python environment
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=$CUDA_HOME/bin:$PATH
+ENV LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY src/aiq/digital_human/requirements.txt digital_human_requirements.txt
+
+# Install Python packages
+RUN pip3 install --no-cache-dir -r digital_human_requirements.txt
+
+# Install NVIDIA SDKs
+RUN pip3 install --no-cache-dir \
+    nvidia-pyindex \
+    nvidia-cuda-runtime-cu12==12.2.140 \
+    nvidia-cudnn-cu12==8.9.2.26 \
+    nvidia-cufft-cu12==11.0.2.54 \
+    nvidia-curand-cu12==10.3.2.106 \
+    nvidia-cusolver-cu12==11.4.5.107 \
+    nvidia-cusparse-cu12==12.1.0.106 \
+    nvidia-nccl-cu12==2.18.1 \
+    nvidia-nvtx-cu12==12.1.105
+
+# Install NVIDIA AI SDKs
+RUN pip3 install --no-cache-dir \
+    nvidia-ace \
+    nvidia-riva-client \
+    nvidia-nemo-toolkit \
+    nvidia-tokkio \
+    nvidia-nim-client
+
+# Install financial data packages
+RUN pip3 install --no-cache-dir \
+    yfinance \
+    polygon-api-client \
+    quandl \
+    alpha-vantage
+
+# Install production dependencies
+RUN pip3 install --no-cache-dir \
+    google-api-python-client \
+    google-auth \
+    psycopg2-binary \
+    redis \
+    pymilvus \
+    prometheus-client \
+    elastic-apm \
+    cryptography \
+    PyJWT
+
+# Copy application code
+COPY . /app
+
+# Install application
+RUN pip3 install -e .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/models /app/cache
+
+# Create non-root user
+RUN useradd -m -u 1000 digitaluser && \
+    chown -R digitaluser:digitaluser /app
+
+# Switch to non-root user
+USER digitaluser
+
+# Expose ports
+EXPOSE 8000 8443
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["python3", "-m", "aiq.digital_human.deployment.production_implementation"]
+
+# Default command
+CMD ["--config", "/config/production_config.yaml"]

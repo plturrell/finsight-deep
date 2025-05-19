@@ -1,0 +1,17 @@
+general:
+  front_end:
+    _type: fastapi
+    port: 8000
+    host: "0.0.0.0"
+    
+workflow:
+  _type: react_agent  
+  llm_name: nim_llm
+  tool_names: []
+  max_iterations: 3
+  
+llms:
+  nim_llm:
+    _type: nim
+    model: "meta/llama-3.1-8b-instruct"
+    base_url: "http://localhost:8000/v1"

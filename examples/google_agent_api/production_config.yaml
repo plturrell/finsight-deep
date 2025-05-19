@@ -1,0 +1,271 @@
+# Production Configuration for Traced Google Agent API
+
+# Authentication Configuration
+auth:
+  issuer: "aiq-agent-system"
+  audience: "agent-api"
+  token_expiry: 3600  # 1 hour
+  refresh_token_expiry: 604800  # 7 days
+  rsa_key_size: 2048
+  jwt_algorithm: "RS256"
+
+# Secrets Management
+secrets:
+  providers:
+    - type: "vault"
+      config:
+        url: "${VAULT_URL}"
+        token: "${VAULT_TOKEN}"
+        mount_path: "secret"
+        kv_version: 2
+    - type: "aws_secrets_manager"
+      config:
+        region: "${AWS_REGION}"
+        endpoint_url: "${AWS_SECRETS_ENDPOINT}"
+    - type: "encrypted_file"
+      config:
+        file_path: "/secure/secrets/encrypted_secrets.enc"
+        key_path: "/secure/keys/master.key"
+  
+  rotation:
+    enabled: true
+    interval: 86400  # 24 hours
+    notify_channels:
+      - "slack"
+      - "email"
+
+# Distributed Tracing Configuration
+tracing:
+  service_name: "google-agent-api"
+  sampling_rate: 0.1  # 10% sampling in production
+  
+  # OpenTelemetry exporters
+  exporters:
+    jaeger:
+      endpoint: "${JAEGER_COLLECTOR_ENDPOINT}"
+      batch_size: 512
+      export_timeout: 30
+    
+    prometheus:
+      endpoint: "${PROMETHEUS_PUSHGATEWAY_ENDPOINT}"
+      push_interval: 15
+      metric_prefix: "aiq_agent"
+  
+  # Trace context propagation
+  propagators:
+    - "tracecontext"
+    - "baggage"
+    - "b3"
+  
+  # Resource attributes
+  resource_attributes:
+    environment: "production"
+    cluster: "${CLUSTER_NAME}"
+    region: "${REGION}"
+    version: "${APP_VERSION}"
+
+# Agent Configuration
+agents:
+  default_timeout: 30000  # 30 seconds
+  max_retries: 3
+  retry_delay: 1000  # 1 second
+  
+  # Connection pooling
+  connection_pool:
+    max_connections: 100
+    min_connections: 10
+    connection_timeout: 5000
+    idle_timeout: 600000  # 10 minutes
+    validation_interval: 60000  # 1 minute
+  
+  # Circuit breaker settings
+  circuit_breaker:
+    failure_threshold: 5
+    recovery_timeout: 60000  # 1 minute
+    expected_exception_types:
+      - "TimeoutError"
+      - "ConnectionError"
+  
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 1000
+    burst_size: 100
+
+# Security Configuration
+security:
+  # Input validation
+  validation:
+    max_message_length: 5000
+    max_metadata_size: 1024
+    prohibited_patterns:
+      - "(?i)<script[^>]*>.*?</script>"  # XSS
+      - "(?i)(union|select|insert|update|delete|drop)\\s+"  # SQL injection
+      - "[;&|`$]"  # Command injection
+  
+  # TLS configuration
+  tls:
+    enabled: true
+    cert_file: "/certs/server.crt"
+    key_file: "/certs/server.key"
+    ca_file: "/certs/ca.crt"
+    min_version: "TLS1.3"
+    cipher_suites:
+      - "TLS_AES_256_GCM_SHA384"
+      - "TLS_CHACHA20_POLY1305_SHA256"
+  
+  # CORS configuration
+  cors:
+    allowed_origins:
+      - "https://app.aiqtoolkit.com"
+      - "https://api.aiqtoolkit.com"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "OPTIONS"
+    allowed_headers:
+      - "Authorization"
+      - "Content-Type"
+      - "X-Request-ID"
+      - "X-Trace-ID"
+
+# Monitoring Configuration
+monitoring:
+  # Health checks
+  health_check:
+    enabled: true
+    endpoint: "/health"
+    interval: 10000  # 10 seconds
+    timeout: 5000  # 5 seconds
+    checks:
+      - "database"
+      - "redis"
+      - "rabbitmq"
+      - "agents"
+  
+  # Metrics collection
+  metrics:
+    enabled: true
+    endpoint: "/metrics"
+    collect_interval: 15000  # 15 seconds
+    histograms:
+      - name: "request_duration"
+        buckets: [0.1, 0.5, 1, 2, 5, 10]
+      - name: "response_size"
+        buckets: [100, 500, 1000, 5000, 10000]
+  
+  # Logging
+  logging:
+    level: "INFO"
+    format: "json"
+    output:
+      - type: "stdout"
+      - type: "file"
+        path: "/logs/agent-api.log"
+        rotation: "daily"
+        retention: 30
+      - type: "fluentd"
+        host: "${FLUENTD_HOST}"
+        port: 24224
+        tag: "agent.api"
+
+# Database Configuration
+database:
+  type: "postgresql"
+  connection:
+    host: "${DB_HOST}"
+    port: 5432
+    database: "agent_api"
+    username: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    ssl_mode: "require"
+  
+  pool:
+    min_size: 5
+    max_size: 50
+    acquire_timeout: 10
+    idle_timeout: 3600
+
+# Cache Configuration
+cache:
+  type: "redis"
+  connection:
+    host: "${REDIS_HOST}"
+    port: 6379
+    password: "${REDIS_PASSWORD}"
+    db: 0
+    ssl: true
+  
+  pool:
+    min_size: 5
+    max_size: 50
+    connection_timeout: 5
+  
+  ttl:
+    default: 300  # 5 minutes
+    responses: 600  # 10 minutes
+    tokens: 3600  # 1 hour
+
+# Message Queue Configuration
+message_queue:
+  type: "rabbitmq"
+  connection:
+    host: "${RABBITMQ_HOST}"
+    port: 5672
+    username: "${RABBITMQ_USER}"
+    password: "${RABBITMQ_PASSWORD}"
+    vhost: "/"
+    ssl: true
+  
+  exchanges:
+    - name: "agent.requests"
+      type: "topic"
+      durable: true
+    - name: "agent.responses"
+      type: "direct"
+      durable: true
+  
+  queues:
+    - name: "agent.processing"
+      durable: true
+      auto_delete: false
+      exclusive: false
+    - name: "agent.dlq"
+      durable: true
+      auto_delete: false
+      exclusive: false
+      arguments:
+        x-message-ttl: 86400000  # 24 hours
+
+# Deployment Configuration
+deployment:
+  replicas: 3
+  resources:
+    requests:
+      cpu: "1"
+      memory: "2Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+  
+  autoscaling:
+    enabled: true
+    min_replicas: 3
+    max_replicas: 20
+    target_cpu_utilization: 70
+    target_memory_utilization: 80
+  
+  probes:
+    liveness:
+      http_get:
+        path: "/health/live"
+        port: 8080
+      initial_delay_seconds: 30
+      period_seconds: 10
+    
+    readiness:
+      http_get:
+        path: "/health/ready"
+        port: 8080
+      initial_delay_seconds: 10
+      period_seconds: 5

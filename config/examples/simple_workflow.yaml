@@ -1,0 +1,11 @@
+general:
+  front_end:
+    _type: console
+    
+workflow:
+  _type: simple
+  
+llms:
+  test_llm:
+    _type: nim
+    model_name: meta/llama-3.1-8b-instruct

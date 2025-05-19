@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  nvidia-api-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.nvidia-test
+    environment:
+      - NVIDIA_API_KEY=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
+      - WORKER_ID=worker-001
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+
+  nvidia-api-tester:
+    build:
+      context: .
+      dockerfile: Dockerfile.nvidia-test
+    environment:
+      - NVIDIA_API_KEY=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
+      - TEST_MODE=true
+    command: python test_continuous.py
+    depends_on:
+      - nvidia-api-worker

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: aiqtoolkit-worker
+  namespace: aiqtoolkit
+spec:
+  serviceName: aiqtoolkit-worker
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aiqtoolkit-worker
+  template:
+    metadata:
+      labels:
+        app: aiqtoolkit-worker
+    spec:
+      containers:
+      - name: worker
+        image: aiqtoolkit/distributed-worker:latest
+        ports:
+        - containerPort: 50052
+          name: grpc
+        env:
+        - name: NODE_ROLE
+          value: "worker"
+        - name: MANAGER_HOST
+          value: "aiqtoolkit-manager"
+        - name: MANAGER_PORT
+          value: "50051"
+        - name: ENABLE_TLS
+          value: "true"
+        - name: ENABLE_AUTH
+          value: "true"
+        - name: GPU_ENABLED
+          value: "true"
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /certs
+          readOnly: true
+        - name: worker-data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "4"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "16Gi"
+            cpu: "8"
+            nvidia.com/gpu: 1
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: aiqtoolkit-tls-certs
+  volumeClaimTemplates:
+  - metadata:
+      name: worker-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "fast-ssd"
+      resources:
+        requests:
+          storage: 100Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiqtoolkit-worker
+  namespace: aiqtoolkit
+spec:
+  selector:
+    app: aiqtoolkit-worker
+  clusterIP: None
+  ports:
+  - port: 50052
+    targetPort: 50052
+    name: grpc

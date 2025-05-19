@@ -1,0 +1,149 @@
+# Default values for aiqtoolkit-distributed
+global:
+  namespace: aiqtoolkit
+  imageRegistry: ""
+  imagePullSecrets: []
+
+manager:
+  enabled: true
+  image:
+    repository: aiqtoolkit/distributed-manager
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 1
+  
+  service:
+    type: LoadBalancer
+    grpcPort: 50051
+    metricsPort: 9090
+    dashboardPort: 8080
+  
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+worker:
+  enabled: true
+  image:
+    repository: aiqtoolkit/distributed-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 3
+  
+  service:
+    grpcPort: 50052
+  
+  resources:
+    requests:
+      memory: "8Gi"
+      cpu: "4"
+      nvidia.com/gpu: 1
+    limits:
+      memory: "16Gi"
+      cpu: "8"
+      nvidia.com/gpu: 1
+  
+  storage:
+    enabled: true
+    storageClass: "fast-ssd"
+    size: 100Gi
+  
+  nodeSelector:
+    nvidia.com/gpu: "true"
+  tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+  affinity: {}
+
+security:
+  tls:
+    enabled: true
+    generateCerts: true
+    certManager:
+      enabled: false
+      issuerRef:
+        name: letsencrypt-prod
+        kind: ClusterIssuer
+  
+  auth:
+    enabled: true
+    secretKey: ""  # Generated if empty
+    tokenExpiry: 3600
+
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+  
+  grafana:
+    enabled: true
+    dashboards:
+      enabled: true
+  
+  dashboard:
+    enabled: true
+    ingress:
+      enabled: false
+      className: nginx
+      host: dashboard.aiqtoolkit.local
+      tls:
+        enabled: false
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: aiqtoolkit.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: manager
+          port: 8080
+  tls: []
+
+rbac:
+  create: true
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+networkPolicy:
+  enabled: false
+
+priorityClassName: ""
+
+configMap:
+  data:
+    cluster.yaml: |
+      cluster:
+        name: aiqtoolkit-production
+        region: us-west-2
+        environment: production

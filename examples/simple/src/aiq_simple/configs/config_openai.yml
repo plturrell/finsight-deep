@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+functions:
+  webpage_query:
+    _type: webpage_query
+    webpage_url: https://docs.smith.langchain.com
+    description: "Search for information about LangSmith. For any questions about LangSmith, you must use this tool!"
+    embedder_name: openai_embedder
+    chunk_size: 512
+  current_datetime:
+    _type: current_datetime
+
+llms:
+  openai_llm:
+    _type: openai
+    model_name: gpt-3.5-turbo
+    temperature: 0.0
+
+embedders:
+  openai_embedder:
+    _type: openai
+    model_name: text-embedding-ada-002
+
+workflow:
+  _type: react_agent
+  tool_names: [webpage_query, current_datetime]
+  llm_name: openai_llm
+  verbose: true
+  retry_parsing_errors: true
+  max_retries: 3

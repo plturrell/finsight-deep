@@ -1,0 +1,142 @@
+# Production Configuration for Digital Human System
+# All values must be provided - no defaults or mocks
+
+# NVIDIA Services
+nvidia:
+  api_key: ${NVIDIA_API_KEY}
+  ace:
+    endpoint: "https://api.nvidia.com/ace/v1"
+    audio2face_2d_endpoint: "https://api.nvidia.com/audio2face/v2"
+    avatar_model: "audio2face-2d-photorealistic"
+    render_resolution: [1920, 1080]
+    fps: 30
+  riva:
+    endpoint: "https://api.nvidia.com/riva/v1"
+    asr_model: "parakeet-ctc-1.1b"
+    tts_model: "fastpitch"
+    voice_profile: "financial_advisor_professional"
+  nemo:
+    retriever_endpoint: "https://api.nvidia.com/nemo/retriever/v1"
+    embedding_model: "nvidia/nemo-retriever-embedding-v1"
+    reranking_model: "nvidia/nemo-retriever-reranking-v1"
+  tokkio:
+    endpoint: "https://api.nvidia.com/tokkio/v1"
+    workflow_id: "financial_advisor_v1"
+
+# Neural Supercomputer
+neural_supercomputer:
+  endpoint: ${NEURAL_SUPERCOMPUTER_ENDPOINT}
+  api_key: ${NEURAL_SUPERCOMPUTER_API_KEY}
+  timeout: 300
+  max_retries: 3
+  connection_pool_size: 10
+
+# Web Search APIs
+web_search:
+  google:
+    api_key: ${GOOGLE_API_KEY}
+    custom_search_engine_id: ${GOOGLE_CSE_ID}
+    max_results: 10
+  yahoo:
+    api_key: ${YAHOO_API_KEY}
+    news_endpoint: "https://api.yahoo.com/news/v1"
+    finance_endpoint: "https://api.yahoo.com/finance/v1"
+
+# Financial Data Sources
+financial_data:
+  providers:
+    - name: "alpha_vantage"
+      api_key: ${ALPHA_VANTAGE_API_KEY}
+      endpoint: "https://www.alphavantage.co/query"
+    - name: "polygon"
+      api_key: ${POLYGON_API_KEY}
+      endpoint: "https://api.polygon.io/v2"
+    - name: "quandl"
+      api_key: ${QUANDL_API_KEY}
+      endpoint: "https://www.quandl.com/api/v3"
+
+# Database Configuration
+databases:
+  milvus:
+    host: ${MILVUS_HOST}
+    port: ${MILVUS_PORT}
+    collection_name: "digital_human_production"
+    dimension: 1024
+    index_type: "IVF_FLAT"
+    metric_type: "COSINE"
+  postgresql:
+    host: ${POSTGRES_HOST}
+    port: ${POSTGRES_PORT}
+    database: "digital_human"
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    ssl_mode: "require"
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    password: ${REDIS_PASSWORD}
+    db: 0
+    ssl: true
+
+# Security
+security:
+  jwt_secret_key: ${JWT_SECRET_KEY}
+  api_key_encryption_key: ${API_KEY_ENCRYPTION_KEY}
+  cors_origins: ${CORS_ALLOWED_ORIGINS}
+  rate_limit:
+    default: 100
+    burst: 10
+  ssl:
+    cert_file: ${SSL_CERT_FILE}
+    key_file: ${SSL_KEY_FILE}
+
+# Performance
+performance:
+  gpu:
+    device_ids: [0, 1]
+    memory_limit: 16384
+    allow_growth: true
+  cache:
+    ttl: 3600
+    max_size: 10000
+  connection_pool:
+    min_size: 10
+    max_size: 100
+    timeout: 30
+
+# Monitoring
+monitoring:
+  prometheus:
+    endpoint: ${PROMETHEUS_ENDPOINT}
+    namespace: "digital_human"
+  elastic_apm:
+    server_url: ${ELASTIC_APM_SERVER}
+    service_name: "digital-human-production"
+    environment: "production"
+  logging:
+    level: "INFO"
+    format: "json"
+    output: "stdout"
+    rotation: "daily"
+
+# Deployment
+deployment:
+  replicas: 3
+  autoscaling:
+    min_replicas: 3
+    max_replicas: 10
+    target_cpu: 70
+    target_memory: 80
+  health_check:
+    interval: 30
+    timeout: 5
+    retries: 3
+  resources:
+    requests:
+      cpu: "2000m"
+      memory: "8Gi"
+      gpu: 1
+    limits:
+      cpu: "4000m"
+      memory: "16Gi"
+      gpu: 1

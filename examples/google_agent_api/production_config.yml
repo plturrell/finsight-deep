@@ -1,0 +1,96 @@
+name: "finsight_deep_production"
+description: "Production-ready Finsight Deep with Google Dialogflow CX"
+
+language_model:
+  llm_type: "nim_llm"
+  model: "llama-3.1-70b-instruct"
+  api_base: "https://integrate.api.nvidia.com/v1"
+  api_key_env: "NVIDIA_API_KEY"
+  temperature: 0.7
+
+functions:
+  # Direct Dialogflow CX agent connection
+  - function_type: "production_google_agent"
+    project_id: "${GOOGLE_PROJECT_ID}"
+    location: "us-central1"
+    agent_id: "${DIALOGFLOW_AGENT_ID}"  # Your Dialogflow CX agent ID
+    timeout: 30
+    max_retries: 3
+    connection_pool_size: 20
+    keepalive_timeout: 30
+    enable_compression: true
+
+  # Multi-agent orchestrator with production features
+  - function_type: "production_connector"
+    redis_url: "${REDIS_URL:redis://localhost:6379}"
+    amqp_url: "${AMQP_URL:amqp://guest:guest@localhost/}"
+    enable_caching: true
+    cache_ttl: 300
+    max_concurrent_calls: 20
+    enable_health_checks: true
+    enable_metrics: true
+    
+    connections:
+      - agent_id: "${DIALOGFLOW_AGENT_ID}"
+        project_id: "${GOOGLE_PROJECT_ID}"
+        location: "us-central1"
+        capabilities: ["finance", "analysis", "insights", "market_data"]
+        weight: 100
+        metadata:
+          name: "Finsight Deep"
+          version: "3.0"
+          type: "financial_analysis"
+      
+      # Add other Dialogflow agents as needed
+      - agent_id: "${MARKET_DATA_AGENT_ID}"
+        project_id: "${GOOGLE_PROJECT_ID}"
+        location: "us-central1"
+        capabilities: ["market_data", "real_time_quotes", "trading"]
+        weight: 80
+        metadata:
+          name: "Market Data Agent"
+          version: "2.0"
+          type: "data_provider"
+
+agent:
+  agent_type: "reasoning_agent"
+  model: "llama-3.1-70b-instruct"
+  max_iterations: 5
+  
+  prompt:
+    system_message: |
+      You are a financial AI assistant with access to Google Dialogflow CX agents
+      including Finsight Deep. These agents provide:
+      
+      1. production_google_agent: Direct connection to Dialogflow CX agents
+      2. production_connector: Multi-agent orchestration with:
+         - Circuit breaker pattern for reliability
+         - Distributed caching for performance
+         - Health monitoring and metrics
+         - Message queuing for async operations
+      
+      Use these tools to provide comprehensive financial analysis by leveraging
+      the specialized capabilities of each agent.
+
+# Production monitoring endpoints
+monitoring:
+  metrics_port: 9090  # Prometheus metrics
+  health_port: 8080   # Health check endpoint
+  
+# Security settings  
+security:
+  enable_tls: true
+  cert_file: "${TLS_CERT_FILE}"
+  key_file: "${TLS_KEY_FILE}"
+  
+# Observability
+observability:
+  enable_tracing: true
+  jaeger_endpoint: "${JAEGER_ENDPOINT:http://localhost:14268/api/traces}"
+  
+# Performance tuning
+performance:
+  connection_pool_size: 50
+  max_concurrent_requests: 100
+  request_timeout: 30
+  cache_size: 10000

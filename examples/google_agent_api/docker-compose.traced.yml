@@ -1,0 +1,174 @@
+version: '3.8'
+
+services:
+  # Google Agent API Service
+  google-agent-api:
+    build:
+      context: ../../
+      dockerfile: docker/Dockerfile.google-agent-api
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      - CONFIG_FILE=/app/config/production_config.yaml
+      - VAULT_URL=http://vault:8200
+      - VAULT_TOKEN=dev-token
+      - DB_HOST=postgres
+      - DB_USER=agent_api
+      - DB_PASSWORD=agent_api_password
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=redis_password
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=agent_api
+      - RABBITMQ_PASSWORD=rabbitmq_password
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/secrets/google-credentials.json
+      - JAEGER_COLLECTOR_ENDPOINT=http://jaeger:14268/api/traces
+      - PROMETHEUS_PUSHGATEWAY_ENDPOINT=http://prometheus-pushgateway:9091
+      - CLUSTER_NAME=local-dev
+      - REGION=local
+      - APP_VERSION=dev
+    volumes:
+      - ./production_config.yaml:/app/config/production_config.yaml
+      - ./secrets:/app/secrets
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - vault
+      - jaeger
+      - prometheus
+    networks:
+      - agent-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=agent_api
+      - POSTGRES_USER=agent_api
+      - POSTGRES_PASSWORD=agent_api_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - agent-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass redis_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - agent-network
+
+  # RabbitMQ Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=agent_api
+      - RABBITMQ_DEFAULT_PASS=rabbitmq_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - agent-network
+
+  # HashiCorp Vault
+  vault:
+    image: vault:latest
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=dev-token
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    networks:
+      - agent-network
+
+  # Jaeger for Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    networks:
+      - agent-network
+
+  # Prometheus for Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9092:9090"
+    networks:
+      - agent-network
+
+  # Prometheus Pushgateway
+  prometheus-pushgateway:
+    image: prom/pushgateway:latest
+    ports:
+      - "9091:9091"
+    networks:
+      - agent-network
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - jaeger
+    networks:
+      - agent-network
+
+  # Fluentd for Log Aggregation
+  fluentd:
+    image: fluent/fluentd:v1.16-debian
+    volumes:
+      - ./monitoring/fluentd/fluent.conf:/fluentd/etc/fluent.conf
+      - ./logs:/fluentd/log
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:

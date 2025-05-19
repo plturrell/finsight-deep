@@ -1,0 +1,49 @@
+# Production Dockerfile for Digital Human Backend
+FROM python:3.11-slim-bullseye
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    curl \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -s /bin/bash aiqtoolkit
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir gunicorn uvloop httptools psycopg2-binary redis hiredis
+
+# Copy application code
+COPY --chown=aiqtoolkit:aiqtoolkit . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/cache && \
+    chown -R aiqtoolkit:aiqtoolkit /app
+
+# Switch to non-root user
+USER aiqtoolkit
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Default command
+CMD ["gunicorn", "api.unified_production_server:create_app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "4", \
+     "--bind", "0.0.0.0:8000", \
+     "--log-level", "info", \
+     "--access-logfile", "/app/logs/access.log", \
+     "--error-logfile", "/app/logs/error.log"]

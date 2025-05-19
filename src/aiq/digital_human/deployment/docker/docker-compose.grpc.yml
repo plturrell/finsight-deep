@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  finsight-grpc:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.grpc
+    image: finsight-deep:grpc
+    container_name: finsight-deep-grpc
+    ports:
+      - "8000:8000"
+    environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - finsight-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  finsight-network:
+    driver: bridge

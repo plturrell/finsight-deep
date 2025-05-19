@@ -1,0 +1,65 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install fastapi uvicorn requests grpcio grpcio-tools
+
+# Copy manager code
+RUN mkdir -p src/aiq/distributed
+COPY src/aiq/distributed/node_manager.py src/aiq/distributed/
+COPY src/aiq/distributed/manager_server.py src/aiq/distributed/
+
+# Create simple manager
+RUN cat > manager.py << 'EOF'
+import os
+import json
+import requests
+import asyncio
+from fastapi import FastAPI
+import uvicorn
+
+app = FastAPI()
+
+# Configuration
+API_KEY = os.environ.get('NIM_API_KEY')
+BASE_URL = os.environ.get('BASE_URL')
+
+@app.get("/")
+async def root():
+    return {"status": "Manager running", "api": "NVIDIA"}
+
+@app.post("/task")
+async def process_task(prompt: str):
+    headers = {
+        'Authorization': f'Bearer {API_KEY}',
+        'Content-Type': 'application/json'
+    }
+    
+    data = {
+        'model': 'meta/llama-3.1-8b-instruct',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': 50
+    }
+    
+    response = requests.post(
+        f'{BASE_URL}/chat/completions',
+        headers=headers,
+        json=data
+    )
+    
+    if response.status_code == 200:
+        result = response.json()
+        return {
+            "status": "success",
+            "response": result['choices'][0]['message']['content']
+        }
+    return {"status": "error", "code": response.status_code}
+
+if __name__ == "__main__":
+    print("NVIDIA API Manager starting...")
+    print(f"API Key: {API_KEY[:10]}...{API_KEY[-5:]}")
+    uvicorn.run(app, host="0.0.0.0", port=8080)
+EOF
+
+CMD ["python", "manager.py"]

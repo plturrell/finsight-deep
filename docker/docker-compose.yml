@@ -1,0 +1,136 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: '3.8'
+
+services:
+  aiqtoolkit:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.gpu
+    image: aiqtoolkit:latest-gpu
+    container_name: aiqtoolkit
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - ../src:/app/src
+      - ../examples:/app/examples
+      - ../tests:/app/tests
+      - aiq_data:/data
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    ports:
+      - "8000:8000"  # FastAPI server
+      - "8080:8080"  # UI server
+      - "6006:6006"  # TensorBoard
+    networks:
+      - aiq_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: >
+      bash -c "
+        echo 'AIQToolkit GPU container started' &&
+        echo 'Run: aiq --help for CLI usage' &&
+        echo 'Run: aiq start to launch the UI' &&
+        /bin/bash
+      "
+
+  # Optional: Milvus for vector storage
+  milvus:
+    image: milvusdb/milvus:latest
+    container_name: milvus
+    environment:
+      - ETCD_ENDPOINTS=etcd:2379
+      - MINIO_ADDRESS=minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus_data:/var/lib/milvus
+    networks:
+      - aiq_network
+    depends_on:
+      - etcd
+      - minio
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls=http://0.0.0.0:2379
+    networks:
+      - aiq_network
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    volumes:
+      - minio_data:/data
+    command: minio server /data
+    networks:
+      - aiq_network
+
+  # Optional: Observability with Phoenix
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    ports:
+      - "6007:6006"
+    environment:
+      - PHOENIX_PORT=6006
+    volumes:
+      - phoenix_data:/data
+    networks:
+      - aiq_network
+
+  # Optional: Jupyter notebook for development
+  jupyter:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.gpu
+    image: aiqtoolkit:latest-gpu
+    container_name: aiqtoolkit-jupyter
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    ports:
+      - "8888:8888"
+    volumes:
+      - ../:/app
+      - jupyter_data:/root/.jupyter
+    networks:
+      - aiq_network
+    command: >
+      bash -c "
+        pip install jupyterlab &&
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+      "
+
+volumes:
+  aiq_data:
+  milvus_data:
+  etcd_data:
+  minio_data:
+  phoenix_data:
+  jupyter_data:
+
+networks:
+  aiq_network:
+    driver: bridge

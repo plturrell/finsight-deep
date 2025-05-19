@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  digital-human-cloud:
+    build:
+      context: .
+      dockerfile: Dockerfile.cloud
+    ports:
+      - "8000:8000"
+    environment:
+      - NVIDIA_API_KEY=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
+      - TOGETHER_API_KEY=1e961dd58c67427a09c40a09382f8f00e54f39aa8c34ac426fd5579c4effd1b4
+    restart: unless-stopped

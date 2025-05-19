@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package nvidia.riva.audio2face.v1;
+
+// Define the Audio2Face service based on NVIDIA's gRPC interface
+service Audio2FaceService {
+  // Streaming RPC for audio to facial animation
+  rpc ProcessAudioStream(stream AudioRequest) returns (stream AnimationResponse);
+  
+  // Get available models
+  rpc GetAvailableModels(Empty) returns (ModelList);
+  
+  // Initialize a specific model
+  rpc InitializeModel(ModelRequest) returns (ModelResponse);
+}
+
+// Request message for audio data
+message AudioRequest {
+  bytes audio_data = 1;
+  int32 sample_rate = 2;
+  string encoding = 3;
+  string model_id = 4;
+  AudioConfig config = 5;
+}
+
+// Audio configuration
+message AudioConfig {
+  int32 channels = 1;
+  string language_code = 2;
+  float emotion_strength = 3;
+  bool enable_tongue = 4;
+}
+
+// Response with animation data
+message AnimationResponse {
+  repeated BlendShape blendshapes = 1;
+  float timestamp = 2;
+  FacialPose facial_pose = 3;
+  EmotionState emotion = 4;
+}
+
+// Blendshape data
+message BlendShape {
+  string name = 1;
+  float value = 2;
+}
+
+// Facial pose (head rotation, etc)
+message FacialPose {
+  float pitch = 1;
+  float yaw = 2;
+  float roll = 3;
+  float eye_gaze_x = 4;
+  float eye_gaze_y = 5;
+}
+
+// Emotion state
+message EmotionState {
+  float happiness = 1;
+  float sadness = 2;
+  float anger = 3;
+  float surprise = 4;
+  float fear = 5;
+  float disgust = 6;
+  float contempt = 7;
+  float neutral = 8;
+}
+
+// Model request
+message ModelRequest {
+  string model_id = 1;
+  ModelConfig config = 2;
+}
+
+// Model configuration
+message ModelConfig {
+  bool enable_tongue_animation = 1;
+  float animation_fps = 2;
+  string quality_preset = 3;  // "low", "medium", "high"
+}
+
+// Model response
+message ModelResponse {
+  bool success = 1;
+  string message = 2;
+  ModelInfo model_info = 3;
+}
+
+// Model information
+message ModelInfo {
+  string model_id = 1;
+  string model_name = 2;
+  string version = 3;
+  repeated string supported_features = 4;
+}
+
+// Model list
+message ModelList {
+  repeated ModelInfo models = 1;
+}
+
+// Empty message
+message Empty {}

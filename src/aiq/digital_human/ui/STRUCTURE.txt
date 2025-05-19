@@ -1,0 +1,69 @@
+.
+├── README.md
+├── README_STRUCTURE.md
+├── STRUCTURE.txt
+├── api
+│   ├── __init__.py
+│   ├── api_server.py
+│   ├── api_server_complete.py
+│   └── production_api_server.py
+├── backend
+├── config
+│   ├── production_config.yaml
+│   └── startup_config.json
+├── frontend
+│   ├── debug_chat.html
+│   ├── digital_human_interface.html
+│   ├── digital_human_interface.js
+│   ├── digital_human_interface_fixed.html
+│   ├── digital_human_interface_fixed.js
+│   ├── digital_human_issues.md
+│   ├── elite_digital_human.js
+│   ├── elite_interface.html
+│   ├── elite_styles.css
+│   ├── photorealistic_avatar.js
+│   ├── research_dashboard.html
+│   ├── research_dashboard.js
+│   └── test_websocket.html
+├── launchers
+│   ├── __init__.py
+│   ├── auto_start.py
+│   ├── digital_human_launcher.py
+│   ├── launch_digital_human.py
+│   ├── run_now.py
+│   └── start.py
+├── logs
+│   ├── backend.log
+│   ├── backend_fixed.log
+│   └── frontend.log
+├── pids
+├── requirements.txt
+├── scripts
+│   ├── auto_start.sh
+│   ├── check_status.sh
+│   ├── deploy.sh
+│   ├── install_autostart.sh
+│   ├── launch.sh
+│   ├── launcher.sh
+│   ├── open_browser.sh
+│   ├── quick_start.sh
+│   ├── refresh_ui.sh
+│   ├── run_all.sh
+│   ├── run_demo.sh
+│   ├── run_digital_human.sh
+│   ├── start.sh
+│   ├── start_elite.sh
+│   └── start_with_venv.sh
+├── tests
+│   ├── test_connection.html
+│   ├── test_elite.py
+│   ├── test_full_ui.html
+│   └── test_websocket.html
+└── websocket
+    ├── __init__.py
+    ├── consensus_websocket_handler.py
+    ├── simple_websocket_server.py
+    ├── websocket_handler.py
+    └── websocket_server.py
+
+11 directories, 56 files

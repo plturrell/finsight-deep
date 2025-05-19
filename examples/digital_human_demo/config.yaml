@@ -1,0 +1,61 @@
+name: Digital Human Neural Supercomputer Demo
+version: 1.0
+
+# Model configuration
+model:
+  name: meta-llama/Llama-3.1-70B-Instruct
+  device: cuda
+  temperature: 0.7
+  max_tokens: 1024
+
+# Conversation settings
+conversation:
+  enable_research: true
+  enable_verification: true
+  enable_self_correction: true
+  context_window: 10
+  
+# Avatar settings
+avatar:
+  resolution: [1920, 1080]
+  target_fps: 60.0
+  enable_gpu_skinning: true
+  enable_effects: true
+  
+# Emotion mapping
+emotion:
+  enable_gpu_optimization: true
+  emotion_detection_model: bert-base-uncased
+  
+# Performance settings
+performance:
+  enable_profiling: true
+  gpu_memory_limit: 16384  # MB
+  batch_size: 1
+  
+# Research capabilities
+research:
+  max_sources: 10
+  verification_threshold: 0.8
+  enable_neural_symbolic: true
+  
+# Digital human strategy
+strategy:
+  proactivity_level: 0.6
+  clarification_threshold: 0.6
+  topic_switching_threshold: 0.3
+  empathy_level: 0.8
+  teaching_mode: true
+  
+# Rendering settings
+rendering:
+  backend: vispy  # vispy, matplotlib, or custom
+  enable_ray_tracing: false
+  antialiasing: true
+  
+# Advanced features
+features:
+  enable_mcts_reasoning: true
+  enable_dspy_optimization: true
+  enable_sglang_constraints: true
+  enable_cuda_kernels: true

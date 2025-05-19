@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connection Test</title>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status">Checking connection...</div>
+    <div id="log"></div>
+    
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const log = (msg) => {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `<p>${new Date().toISOString()}: ${msg}</p>`;
+            console.log(msg);
+        };
+        
+        log('Starting connection test...');
+        
+        // Test regular HTTP connection first
+        fetch('http://localhost:8000/health')
+            .then(response => {
+                log(`HTTP status: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                log(`HTTP health check passed: ${JSON.stringify(data)}`);
+            })
+            .catch(error => {
+                log(`HTTP error: ${error.message}`);
+            });
+        
+        // Test WebSocket connection
+        try {
+            const socket = io.connect('http://localhost:8000', {
+                transports: ['websocket'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5
+            });
+            
+            socket.on('connect', () => {
+                log('WebSocket connected!');
+                document.getElementById('status').textContent = 'Connected!';
+                document.getElementById('status').style.color = 'green';
+            });
+            
+            socket.on('connect_error', (error) => {
+                log(`WebSocket connect error: ${error.message}`);
+                document.getElementById('status').textContent = 'Connection failed!';
+                document.getElementById('status').style.color = 'red';
+            });
+            
+            socket.on('disconnect', () => {
+                log('WebSocket disconnected');
+            });
+            
+            socket.on('error', (error) => {
+                log(`WebSocket error: ${error}`);
+            });
+        } catch (e) {
+            log(`Exception: ${e.message}`);
+        }
+    </script>
+</body>
+</html>

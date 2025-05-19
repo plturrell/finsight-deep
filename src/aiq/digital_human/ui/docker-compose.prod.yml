@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  # Redis for session storage and caching
+  redis:
+    image: redis:7-alpine
+    container_name: digital-human-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+
+  # PostgreSQL for main database
+  postgres:
+    image: postgres:15-alpine
+    container_name: digital-human-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: aiqtoolkit
+      POSTGRES_PASSWORD: secure_password_here
+      POSTGRES_DB: digital_human
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deployment/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiqtoolkit -d digital_human"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Unified Backend Server
+  backend:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.production
+    container_name: digital-human-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://aiqtoolkit:secure_password_here@postgres:5432/digital_human
+      JWT_SECRET: ${JWT_SECRET}
+      ENABLE_CONSENSUS: ${ENABLE_CONSENSUS:-true}
+      ENABLE_NVIDIA: ${ENABLE_NVIDIA:-false}
+      ENABLE_MCP: ${ENABLE_MCP:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      WORKERS: ${WORKERS:-4}
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      gunicorn api.unified_production_server:create_app
+      --worker-class uvicorn.workers.UvicornWorker
+      --workers ${WORKERS:-4}
+      --bind 0.0.0.0:8000
+      --log-level info
+      --access-logfile /app/logs/access.log
+      --error-logfile /app/logs/error.log
+
+  # NGINX Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: digital-human-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./deployment/nginx.conf:/etc/nginx/nginx.conf
+      - ./frontend:/usr/share/nginx/html
+      - ./deployment/ssl:/etc/nginx/ssl
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: digital-human-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deployment/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: digital-human-grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deployment/grafana-dashboards:/etc/grafana/provisioning/dashboards
+      - ./deployment/grafana-datasources:/etc/grafana/provisioning/datasources
+
+volumes:
+  redis-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  default:
+    name: digital-human-network

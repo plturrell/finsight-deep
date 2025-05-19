@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+# Install Python and system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python alias
+RUN ln -s /usr/bin/python3.11 /usr/bin/python
+
+# Install AIQToolkit and dependencies
+WORKDIR /app
+COPY requirements-distributed.txt .
+RUN pip install --no-cache-dir -r requirements-distributed.txt
+
+# Copy source code
+COPY src/aiq /app/aiq
+
+# Create certificates directory
+RUN mkdir -p /certs
+
+# Environment variables
+ENV PYTHONPATH=/app
+ENV NODE_ROLE=manager
+ENV GRPC_PORT=50051
+ENV METRICS_PORT=9090
+ENV DASHBOARD_PORT=8080
+ENV ENABLE_TLS=true
+ENV ENABLE_AUTH=true
+
+# Expose ports
+EXPOSE 50051 9090 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:9090/metrics || exit 1
+
+# Run manager
+CMD ["python", "-m", "aiq.distributed.manager", \
+     "--port", "${GRPC_PORT}", \
+     "--metrics-port", "${METRICS_PORT}", \
+     "--dashboard-port", "${DASHBOARD_PORT}"]

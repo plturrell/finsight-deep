@@ -1,0 +1,17 @@
+general:
+  front_end:
+    _type: fastapi
+    
+# Minimal workflow config
+workflow:
+  _type: react_agent
+  llm_name: demo_llm
+  tool_names: []
+  max_iterations: 3
+  
+# LLM configuration  
+llms:
+  demo_llm:
+    _type: openai
+    model_name: gpt-3.5-turbo
+    api_key: "test"

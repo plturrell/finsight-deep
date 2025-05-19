@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package aiq.distributed;
+
+// Node registration request
+message RegisterRequest {
+    string node_id = 1;
+    string hostname = 2;
+    string ip_address = 3;
+    int32 port = 4;
+    int32 num_gpus = 5;
+    int32 cpu_count = 6;
+    float memory_gb = 7;
+}
+
+// Node registration response
+message RegisterResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// Heartbeat request
+message HeartbeatRequest {
+    string node_id = 1;
+    string status = 2;
+    repeated string current_tasks = 3;
+}
+
+// Heartbeat response
+message HeartbeatResponse {
+    bool success = 1;
+}
+
+// Task assignment request
+message AssignTaskRequest {
+    string task_id = 1;
+    map<string, string> resource_requirements = 2;
+}
+
+// Task assignment response
+message AssignTaskResponse {
+    string node_id = 1;
+    bool success = 2;
+}
+
+// Task execution request
+message ExecuteTaskRequest {
+    string task_id = 1;
+    string function_name = 2;
+    string serialized_inputs = 3;  // JSON serialized inputs
+    map<string, string> metadata = 4;
+}
+
+// Task execution response
+message ExecuteTaskResponse {
+    string task_id = 1;
+    bool success = 2;
+    string serialized_output = 3;  // JSON serialized output
+    string error_message = 4;
+}
+
+// Node manager service
+service NodeManager {
+    rpc RegisterNode(RegisterRequest) returns (RegisterResponse);
+    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+    rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
+}
+
+// Task executor service
+service TaskExecutor {
+    rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+}

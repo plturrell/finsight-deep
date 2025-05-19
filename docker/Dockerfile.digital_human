@@ -1,0 +1,64 @@
+# Docker container for Digital Human Financial Advisor
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_VISIBLE_DEVICES=0
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    cmake \
+    git \
+    wget \
+    curl \
+    libssl-dev \
+    libffi-dev \
+    libpq-dev \
+    libsndfile1 \
+    ffmpeg \
+    portaudio19-dev \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+WORKDIR /app
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Install additional ML/AI dependencies
+RUN pip3 install --no-cache-dir \
+    torch==2.1.0+cu121 \
+    torchvision==0.16.0+cu121 \
+    torchaudio==2.1.0+cu121 \
+    -f https://download.pytorch.org/whl/torch_stable.html
+
+# Copy application code
+COPY src/aiq /app/aiq
+COPY scripts/ /app/scripts/
+
+# Install Node.js dependencies for frontend
+WORKDIR /app/aiq/digital_human/ui/frontend
+COPY src/aiq/digital_human/ui/frontend/package*.json ./
+RUN npm install
+
+# Set up working directory
+WORKDIR /app
+
+# Create volume mount points
+VOLUME ["/app/data", "/app/logs", "/app/models"]
+
+# Expose ports
+EXPOSE 8000 8080 8081
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Entry point
+ENTRYPOINT ["python3", "-m", "aiq.digital_human.launch_ui"]

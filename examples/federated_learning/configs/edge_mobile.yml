@@ -1,0 +1,35 @@
+# Mobile Edge Client Configuration
+
+edge_config:
+  device_type: mobile
+  mode: offline_first      # Mobile devices often offline
+  sync_interval: 7200      # Sync every 2 hours
+  cache_size_mb: 50        # Limited storage
+  offline_queue_size: 500
+  bandwidth_limit_mbps: 10  # Limited bandwidth
+  power_mode: low_power    # Battery conservation
+  local_model_path: ~/.aiq/models
+  security_level: high
+
+federated_config:
+  local_epochs: 3          # Fewer epochs to save battery
+  batch_size: 16           # Smaller batch size
+  learning_rate: 0.01
+  differential_privacy: true
+  privacy_budget: 5.0      # Stricter privacy
+  
+server:
+  url: https://fl-server.example.com  # Use HTTPS in production
+  
+model:
+  input_size: 784
+  num_classes: 10
+  
+dataset:
+  size: 500  # Smaller dataset on mobile
+  input_dim: 784
+  num_classes: 10
+  
+logging:
+  level: WARNING  # Less verbose on mobile
+  file: null      # Don't log to file on mobile

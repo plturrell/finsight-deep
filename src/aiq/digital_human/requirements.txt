@@ -1,0 +1,81 @@
+# Digital Human Production Requirements
+# Core dependencies
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+websockets==12.0
+python-multipart==0.0.6
+
+# NVIDIA AI SDKs (these will be installed from NVIDIA repos)
+# nvidia-ace
+# nvidia-riva-client  
+# nvidia-nemo-toolkit
+# nvidia-tokkio
+# nvidia-nim-client
+
+# LLM and AI
+openai==1.8.0
+anthropic==0.11.0
+transformers==4.36.2
+tokenizers==0.15.0
+sentence-transformers==2.2.2
+
+# Vector Database
+pymilvus==2.3.4
+chromadb==0.4.22
+
+# Financial Data
+yfinance==0.2.33
+polygon-api-client==1.13.1
+quandl==3.7.0
+alpha-vantage==2.3.1
+
+# Web Search and APIs
+google-api-python-client==2.111.0
+google-auth==2.25.2
+requests==2.31.0
+beautifulsoup4==4.12.2
+
+# Database and Caching
+psycopg2-binary==2.9.9
+redis==5.0.1
+sqlalchemy==2.0.25
+alembic==1.13.1
+
+# Security
+PyJWT==2.8.0
+cryptography==41.0.7
+python-jose[cryptography]==3.3.0
+bcrypt==4.1.2
+
+# Monitoring and Logging
+prometheus-client==0.19.0
+elastic-apm==6.19.0
+structlog==24.1.0
+
+# Audio/Video Processing
+numpy==1.24.3
+scipy==1.11.4
+soundfile==0.12.1
+pyaudio==0.2.14
+opencv-python==4.9.0.80
+Pillow==10.2.0
+
+# Task Queue and Scheduling
+celery==5.3.4
+redis==5.0.1
+apscheduler==3.10.4
+
+# Development and Testing
+pytest==7.4.4
+pytest-asyncio==0.23.2
+pytest-cov==4.1.0
+python-dotenv==1.0.0
+
+# Utilities
+httpx==0.26.0
+aiofiles==23.2.1
+python-dateutil==2.8.2
+pytz==2023.3
+pyyaml==6.0.1

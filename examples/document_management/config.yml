@@ -1,0 +1,84 @@
+name: document_management_example
+description: Document management with NVIDIA RAG, Jena, and Dublin Core metadata
+version: 1.0.0
+
+components:
+  functions:
+    - name: upload_documents
+      type: document_upload
+      config:
+        storage_path: "/data/aiq_documents"
+        enable_rag: true
+        auto_metadata: true
+
+    - name: search_documents  
+      type: document_search
+      config:
+        search_type: hybrid
+        top_k: 20
+        use_reranking: true
+
+    - name: crawl_research
+      type: web_crawler
+      config:
+        max_depth: 5
+        max_pages: 200
+        research_focus: true
+
+    - name: nvidia_rag_tool
+      type: nvidia_rag
+      config:
+        base_url: "${NVIDIA_RAG_URL:http://localhost:8080/v1/retrieval}"
+        timeout: 120
+        top_k: 10
+        collection_name: aiq_documents
+
+  llms:
+    - name: metadata_llm
+      type: openai
+      config:
+        model: gpt-4-turbo-preview
+        temperature: 0.3
+        max_tokens: 2000
+
+  embedders:
+    - name: nvidia_embedder
+      type: nim
+      config:
+        base_url: "${NVIDIA_NIM_URL:http://localhost:8000}"
+        model: nvidia-embed-qa-4
+        dimensions: 1024
+
+  retrievers:
+    - name: jena_retriever
+      type: custom
+      config:
+        sparql_endpoint: "${JENA_SPARQL_ENDPOINT:http://localhost:3030/dataset/sparql}"
+        update_endpoint: "${JENA_UPDATE_ENDPOINT:http://localhost:3030/dataset/update}"
+        
+workflow:
+  - action: upload_documents
+    parameters:
+      file_path: "${INPUT_FILE}"
+      metadata:
+        creator: "${CREATOR:AIQ System}"
+        subject: ["research", "documentation", "nvidia"]
+        
+  - action: search_documents
+    parameters:
+      query: "${SEARCH_QUERY}"
+      filters:
+        type: ["pdf", "research_output"]
+        date_range: "2024-01-01/2024-12-31"
+        
+  - action: crawl_research
+    parameters:
+      url: "${CRAWL_URL}"
+      keywords: ["machine learning", "neural networks", "GPU optimization"]
+
+environment:
+  NVIDIA_RAG_URL: http://nvidia-rag-service:8080/v1/retrieval
+  NVIDIA_NIM_URL: http://nvidia-nim-service:8000
+  JENA_SPARQL_ENDPOINT: http://jena-fuseki:3030/aiq/sparql
+  JENA_UPDATE_ENDPOINT: http://jena-fuseki:3030/aiq/update
+  DOCUMENT_STORAGE_PATH: /data/aiq_documents

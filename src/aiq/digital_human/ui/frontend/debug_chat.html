@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .message-log {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+            background: #f9f9f9;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+        input { width: 300px; }
+        button { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Elite Digital Human Chat Debug</h1>
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div>
+        <input type="text" id="testInput" placeholder="Type test message...">
+        <button onclick="sendTest()">Send Test</button>
+        <button onclick="connectWS()">Connect</button>
+        <button onclick="disconnectWS()">Disconnect</button>
+    </div>
+    
+    <div class="message-log" id="log"></div>
+    
+    <h3>Quick Tests:</h3>
+    <button onclick="quickTest('Hello')">Test: Hello</button>
+    <button onclick="quickTest('What is my portfolio value?')">Test: Portfolio</button>
+    <button onclick="quickTest('Help me analyze my investments')">Test: Analysis</button>
+
+    <script>
+        let ws = null;
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`;
+            entry.style.color = type === 'error' ? 'red' : type === 'sent' ? 'blue' : 'green';
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            status.textContent = connected ? 'Connected' : 'Disconnected';
+            status.className = 'status ' + (connected ? 'connected' : 'disconnected');
+        }
+        
+        function connectWS() {
+            if (ws) {
+                addLog('Already connected', 'info');
+                return;
+            }
+            
+            ws = new WebSocket('ws://localhost:8000/ws');
+            
+            ws.onopen = () => {
+                addLog('WebSocket connected', 'info');
+                updateStatus(true);
+                
+                // Send initial message
+                const initMsg = {
+                    type: 'startSession',
+                    sessionId: 'debug_' + Date.now()
+                };
+                ws.send(JSON.stringify(initMsg));
+                addLog('Sent: ' + JSON.stringify(initMsg), 'sent');
+            };
+            
+            ws.onmessage = (event) => {
+                addLog('Received: ' + event.data, 'received');
+                
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'response') {
+                        addLog('AI Response: ' + data.content, 'info');
+                    }
+                } catch (e) {
+                    addLog('Parse error: ' + e.message, 'error');
+                }
+            };
+            
+            ws.onerror = (error) => {
+                addLog('Error: ' + error, 'error');
+            };
+            
+            ws.onclose = () => {
+                addLog('WebSocket disconnected', 'info');
+                updateStatus(false);
+                ws = null;
+            };
+        }
+        
+        function disconnectWS() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendTest() {
+            const input = document.getElementById('testInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addLog('Not connected!', 'error');
+                return;
+            }
+            
+            const msg = {
+                type: 'message',
+                content: message,
+                sessionId: 'debug_session',
+                timestamp: new Date().toISOString()
+            };
+            
+            ws.send(JSON.stringify(msg));
+            addLog('Sent: ' + JSON.stringify(msg), 'sent');
+            input.value = '';
+        }
+        
+        function quickTest(message) {
+            document.getElementById('testInput').value = message;
+            sendTest();
+        }
+        
+        // Auto-connect on load
+        window.onload = () => {
+            connectWS();
+        };
+    </script>
+</body>
+</html>

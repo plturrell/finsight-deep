@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Elite Digital Human UI Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0F1419;
+            color: #fff;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #1C1F26;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #30363D;
+        }
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .pass { background: #00D4AA; color: #000; }
+        .fail { background: #FF4757; color: #fff; }
+        .pending { background: #FFB800; color: #000; }
+        button {
+            background: #0066FF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0052CC;
+        }
+        .log {
+            background: #000;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .emoji {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        h1 {
+            color: #0066FF;
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #00D4AA;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Elite Digital Human UI Test Suite</h1>
+        
+        <div class="grid">
+            <div class="test-section">
+                <h2>🔌 Connection Test</h2>
+                <div id="wsStatus" class="status pending">Pending</div>
+                <div class="log" id="wsLog"></div>
+                <button onclick="testWebSocket()">Test WebSocket</button>
+            </div>
+            
+            <div class="test-section">
+                <h2>💬 Chat Test</h2>
+                <div id="chatStatus" class="status pending">Pending</div>
+                <div class="log" id="chatLog"></div>
+                <button onclick="testChat()">Test Chat</button>
+            </div>
+            
+            <div class="test-section">
+                <h2>🎨 UI Test</h2>
+                <div id="uiStatus" class="status pending">Pending</div>
+                <div class="log" id="uiLog"></div>
+                <button onclick="testUI()">Test UI</button>
+                <button onclick="openUI()">Open UI</button>
+            </div>
+            
+            <div class="test-section">
+                <h2>🤖 Avatar Test</h2>
+                <div id="avatarStatus" class="status pending">Pending</div>
+                <div class="log" id="avatarLog"></div>
+                <button onclick="testAvatar()">Test Avatar</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Overall Status</h2>
+            <div id="overallStatus" class="status pending">Running Tests...</div>
+            <div class="log" id="overallLog"></div>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        const logs = {};
+        
+        function log(section, message, type = 'info') {
+            const logEl = document.getElementById(section + 'Log');
+            if (!logs[section]) logs[section] = [];
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logs[section].push(entry);
+            
+            logEl.innerHTML = logs[section].join('<br>');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function setStatus(section, status) {
+            const statusEl = document.getElementById(section + 'Status');
+            statusEl.className = 'status ' + status;
+            statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+        
+        async function testWebSocket() {
+            setStatus('ws', 'pending');
+            log('ws', 'Testing WebSocket connection...');
+            
+            try {
+                ws = new WebSocket('ws://localhost:8000/ws');
+                
+                await new Promise((resolve, reject) => {
+                    ws.onopen = () => {
+                        log('ws', 'WebSocket connected successfully');
+                        setStatus('ws', 'pass');
+                        resolve();
+                    };
+                    
+                    ws.onerror = (error) => {
+                        log('ws', 'WebSocket error: ' + error, 'error');
+                        setStatus('ws', 'fail');
+                        reject(error);
+                    };
+                    
+                    ws.onmessage = (event) => {
+                        log('ws', 'Received: ' + event.data, 'success');
+                    };
+                    
+                    setTimeout(() => reject('Connection timeout'), 5000);
+                });
+                
+                return true;
+            } catch (error) {
+                log('ws', 'Connection failed: ' + error, 'error');
+                setStatus('ws', 'fail');
+                return false;
+            }
+        }
+        
+        async function testChat() {
+            setStatus('chat', 'pending');
+            log('chat', 'Testing chat functionality...');
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                const connected = await testWebSocket();
+                if (!connected) {
+                    setStatus('chat', 'fail');
+                    return false;
+                }
+            }
+            
+            try {
+                const testMessage = {
+                    type: 'message',
+                    content: 'Test message from UI tester',
+                    sessionId: 'test_' + Date.now(),
+                    timestamp: new Date().toISOString()
+                };
+                
+                ws.send(JSON.stringify(testMessage));
+                log('chat', 'Sent test message', 'success');
+                
+                await new Promise((resolve) => {
+                    const handler = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'response') {
+                            log('chat', 'Received response: ' + data.content, 'success');
+                            setStatus('chat', 'pass');
+                            ws.removeEventListener('message', handler);
+                            resolve();
+                        }
+                    };
+                    ws.addEventListener('message', handler);
+                    
+                    setTimeout(() => {
+                        log('chat', 'Response timeout', 'error');
+                        setStatus('chat', 'fail');
+                        ws.removeEventListener('message', handler);
+                        resolve();
+                    }, 5000);
+                });
+                
+                return true;
+            } catch (error) {
+                log('chat', 'Chat test failed: ' + error, 'error');
+                setStatus('chat', 'fail');
+                return false;
+            }
+        }
+        
+        async function testUI() {
+            setStatus('ui', 'pending');
+            log('ui', 'Testing UI components...');
+            
+            try {
+                // Test frontend server
+                const response = await fetch('/elite_interface.html');
+                if (response.ok) {
+                    log('ui', 'Elite interface accessible', 'success');
+                } else {
+                    throw new Error('UI not accessible');
+                }
+                
+                // Test CSS
+                const cssResponse = await fetch('/elite_styles.css');
+                if (cssResponse.ok) {
+                    log('ui', 'CSS loaded successfully', 'success');
+                } else {
+                    throw new Error('CSS not found');
+                }
+                
+                // Test JS
+                const jsResponse = await fetch('/elite_digital_human.js');
+                if (jsResponse.ok) {
+                    log('ui', 'JavaScript loaded successfully', 'success');
+                } else {
+                    throw new Error('JS not found');
+                }
+                
+                setStatus('ui', 'pass');
+                return true;
+            } catch (error) {
+                log('ui', 'UI test failed: ' + error, 'error');
+                setStatus('ui', 'fail');
+                return false;
+            }
+        }
+        
+        async function testAvatar() {
+            setStatus('avatar', 'pending');
+            log('avatar', 'Testing avatar system...');
+            
+            try {
+                // Test if Three.js is available
+                const threeResponse = await fetch('/elite_interface.html');
+                const html = await threeResponse.text();
+                
+                if (html.includes('three.js')) {
+                    log('avatar', 'Three.js library found', 'success');
+                } else {
+                    throw new Error('Three.js not loaded');
+                }
+                
+                // Test avatar script
+                const avatarResponse = await fetch('/photorealistic_avatar.js');
+                if (avatarResponse.ok) {
+                    log('avatar', 'Avatar system loaded', 'success');
+                } else {
+                    throw new Error('Avatar script not found');
+                }
+                
+                setStatus('avatar', 'pass');
+                return true;
+            } catch (error) {
+                log('avatar', 'Avatar test failed: ' + error, 'error');
+                setStatus('avatar', 'fail');
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            setStatus('overall', 'pending');
+            log('overall', 'Starting comprehensive test suite...');
+            
+            const tests = [
+                { name: 'WebSocket', fn: testWebSocket },
+                { name: 'Chat', fn: testChat },
+                { name: 'UI', fn: testUI },
+                { name: 'Avatar', fn: testAvatar }
+            ];
+            
+            let passed = 0;
+            let failed = 0;
+            
+            for (const test of tests) {
+                log('overall', `Running ${test.name} test...`);
+                const result = await test.fn();
+                
+                if (result) {
+                    passed++;
+                    log('overall', `✅ ${test.name} test passed`, 'success');
+                } else {
+                    failed++;
+                    log('overall', `❌ ${test.name} test failed`, 'error');
+                }
+            }
+            
+            const total = passed + failed;
+            const successRate = (passed / total * 100).toFixed(1);
+            
+            log('overall', `\nTest Results: ${passed}/${total} passed (${successRate}%)`);
+            
+            if (failed === 0) {
+                setStatus('overall', 'pass');
+                log('overall', '🎉 All tests passed! Elite Digital Human UI is ready.', 'success');
+            } else {
+                setStatus('overall', 'fail');
+                log('overall', '⚠️ Some tests failed. Check individual test logs.', 'error');
+            }
+        }
+        
+        function openUI() {
+            window.open('/elite_interface.html', '_blank');
+        }
+        
+        function clearLogs() {
+            Object.keys(logs).forEach(key => logs[key] = []);
+            document.querySelectorAll('.log').forEach(el => el.innerHTML = '');
+        }
+        
+        // Auto-run tests on load
+        window.onload = () => {
+            runAllTests();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install requests grpcio
+
+# Create worker
+RUN cat > worker.py << 'EOF'
+import os
+import time
+import requests
+import json
+
+# Configuration
+API_KEY = os.environ.get('NIM_API_KEY')
+BASE_URL = os.environ.get('BASE_URL')
+WORKER_ID = os.environ.get('WORKER_ID', 'worker-001')
+MANAGER_HOST = os.environ.get('MANAGER_HOST', 'localhost')
+
+def process_task(prompt):
+    """Process a task using NVIDIA API"""
+    headers = {
+        'Authorization': f'Bearer {API_KEY}',
+        'Content-Type': 'application/json'
+    }
+    
+    data = {
+        'model': 'meta/llama-3.1-8b-instruct',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': 50
+    }
+    
+    try:
+        response = requests.post(
+            f'{BASE_URL}/chat/completions',
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result['choices'][0]['message']['content']
+    except Exception as e:
+        return f"Error: {e}"
+    return "Error processing task"
+
+def main():
+    print(f"Worker {WORKER_ID} starting...")
+    print(f"API Key: {API_KEY[:10]}...{API_KEY[-5:]}")
+    print(f"Manager: {MANAGER_HOST}")
+    
+    # Simple work loop
+    while True:
+        print(f"[{WORKER_ID}] Waiting for tasks...")
+        
+        # Simulate getting task from manager
+        test_prompts = [
+            "What is distributed computing?",
+            "Explain containerization",
+            "How does Docker work?"
+        ]
+        
+        for i, prompt in enumerate(test_prompts):
+            print(f"[{WORKER_ID}] Processing: {prompt}")
+            result = process_task(prompt)
+            print(f"[{WORKER_ID}] Result: {result[:50]}...")
+            time.sleep(5)
+        
+        time.sleep(10)
+
+if __name__ == "__main__":
+    main()
+EOF
+
+CMD ["python", "worker.py"]

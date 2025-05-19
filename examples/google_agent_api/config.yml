@@ -1,0 +1,83 @@
+name: "finsight_deep_agent_api"
+description: "Finsight Deep Google Agent API integration for financial insights"
+
+language_model:
+  llm_type: "nim_llm"
+  model: "llama-3.1-70b-instruct"
+  api_base: "https://integrate.api.nvidia.com/v1"
+  api_key_env: "NVIDIA_API_KEY"
+  temperature: 0.7
+
+functions:
+  - function_type: "google_agent_api"
+    project_id: "${GOOGLE_PROJECT_ID}"
+    location: "us-central1"
+    agent_id: "finsight_deep"
+    timeout: 60
+    max_retries: 3
+
+  - function_type: "agent_to_agent_connector"
+    connections:
+      - agent_id: "finsight_deep"
+        project_id: "${GOOGLE_PROJECT_ID}"
+        location: "us-central1"
+        capabilities: ["finance", "analysis", "insights", "market_data", "risk_assessment"]
+        metadata:
+          version: "3.0"
+          description: "Deep financial insights and analysis agent"
+      
+      - agent_id: "market-data-agent"
+        project_id: "${GOOGLE_PROJECT_ID}"
+        location: "us-central1"
+        capabilities: ["market_data", "real_time_quotes", "trading"]
+        metadata:
+          version: "2.0"
+          description: "Real-time market data agent"
+      
+      - agent_id: "risk-analysis-agent"
+        project_id: "${GOOGLE_PROJECT_ID}"
+        location: "us-central1"
+        capabilities: ["risk_assessment", "portfolio_analysis", "compliance"]
+        metadata:
+          version: "1.5"
+          description: "Risk and compliance analysis agent"
+      
+      - agent_id: "news-sentiment-agent"
+        project_id: "${GOOGLE_PROJECT_ID}"
+        location: "us-west1"
+        capabilities: ["news", "sentiment_analysis", "market_impact"]
+        metadata:
+          version: "2.0"
+          description: "Financial news and sentiment analysis agent"
+    
+    enable_caching: true
+    cache_ttl: 300
+    max_concurrent_calls: 10
+
+  - function_type: "agent_registry"
+    registry_file: "/tmp/agent_registry.json"
+    auto_discovery: true
+    refresh_interval: 3600
+    enable_health_check: true
+
+agent:
+  agent_type: "reasoning_agent"
+  model: "llama-3.1-70b-instruct"
+  max_iterations: 5
+  
+  prompt:
+    system_message: |
+      You are a financial AI assistant with access to Finsight Deep and other specialized
+      financial agents. You can communicate with these agents to provide comprehensive
+      financial insights and analysis. You have access to:
+      
+      1. google_agent_api: Direct communication with Finsight Deep for deep financial analysis
+      2. agent_to_agent_connector: Route queries to specialized financial agents:
+         - Finsight Deep: Comprehensive financial insights and market analysis
+         - Market Data Agent: Real-time quotes and trading information
+         - Risk Analysis Agent: Portfolio risk assessment and compliance
+         - News Sentiment Agent: Financial news analysis and market sentiment
+      3. agent_registry: Discover and manage available financial agents
+      
+      Use these tools to provide accurate, timely, and comprehensive financial insights
+      by leveraging the expertise of specialized agents.

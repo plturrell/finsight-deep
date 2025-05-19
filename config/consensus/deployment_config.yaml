@@ -1,0 +1,71 @@
+# Nash-Ethereum Consensus Deployment Configuration
+
+# Network configuration
+network:
+  name: "polygon-mumbai"  # Use testnet for development
+  provider_url: "https://polygon-mumbai.g.alchemy.com/v2/YOUR_API_KEY"
+  chain_id: 80001
+  explorer_url: "https://mumbai.polygonscan.com"
+
+# Contract deployment settings
+contract:
+  name: "NeuralConsensus"
+  version: "1.0.0"
+  
+# Constructor arguments
+constructor_args:
+  minStakeAmount: "100000000000000000"  # 0.1 ETH in wei
+  consensusReward: "10000000000000000"   # 0.01 ETH in wei
+  taskTimeout: 3600  # 1 hour in seconds
+
+# Initial configuration
+initial_agents:
+  - "0x742d35Cc6634C0532925a3b844Bc9e3d65E0fA15"  # Example agent address
+  - "0x8cdFfc9E1fD15D8F956BEaD8E4fC33D8a9c1B9a1"  # Example agent address
+
+# Gas settings
+gas:
+  max_gas_price: "50000000000"  # 50 gwei
+  gas_limit: 5000000
+  
+# Security settings
+security:
+  enable_multisig: true
+  multisig_threshold: 2
+  admin_addresses:
+    - "0x5B38Da6a701c568545dCfcB03FCB875f56bE4Cdd"
+    - "0xAb8483F9E1f29C27e0A601a2C9c4E7c0d3C6Ea52"
+
+# Verification settings
+verify: true
+etherscan_api_key: "YOUR_ETHERSCAN_API_KEY"
+
+# Output directory for deployment artifacts
+output_dir: "./deployments"
+
+# Additional contracts to deploy
+additional_contracts:
+  - name: "ConsensusToken"
+    type: "ERC20"
+    args:
+      name: "Neural Consensus Token"
+      symbol: "NCT"
+      initial_supply: "1000000000000000000000000"  # 1M tokens
+      
+  - name: "GovernanceContract"
+    type: "governance"
+    args:
+      voting_period: 259200  # 3 days in seconds
+      proposal_threshold: "10000000000000000000"  # 10 tokens
+
+# Layer 2 configuration (for gas optimization)
+layer2:
+  enabled: true
+  network: "polygon"
+  bridge_contract: "0x7ceB23A6cf8F7E5B3F4Fc7ed038DbA120aB63f83"
+  
+# Monitoring configuration
+monitoring:
+  enabled: true
+  metrics_endpoint: "https://metrics.example.com"
+  alert_webhook: "https://alerts.example.com/webhook"

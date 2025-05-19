@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Base image for CPU-only environments
+FROM python:3.11-slim-bullseye
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    git-lfs \
+    curl \
+    build-essential \
+    libgomp1 \
+    libopenblas-dev \
+    liblapack-dev \
+    graphviz \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for package management
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Create working directory
+WORKDIR /app
+
+# Copy project files
+COPY pyproject.toml uv.lock ./
+COPY src/ ./src/
+COPY packages/ ./packages/
+COPY examples/ ./examples/
+COPY tests/ ./tests/
+
+# Install AIQToolkit (CPU version)
+RUN uv sync
+
+# Install additional CPU-optimized packages
+RUN pip3 install \
+    numpy \
+    scipy \
+    scikit-learn \
+    matplotlib \
+    plotly
+
+# Expose ports
+EXPOSE 8000 8080
+
+# Entry point
+ENTRYPOINT ["/bin/bash"]

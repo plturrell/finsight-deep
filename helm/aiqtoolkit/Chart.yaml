@@ -1,0 +1,17 @@
+apiVersion: v2
+name: aiqtoolkit-distributed
+description: A Helm chart for AIQToolkit distributed processing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - aiqtoolkit
+  - distributed
+  - ai
+  - gpu
+home: https://github.com/NVIDIA/AIQToolkit
+sources:
+  - https://github.com/NVIDIA/AIQToolkit
+maintainers:
+  - name: NVIDIA Corporation
+    email: support@nvidia.com

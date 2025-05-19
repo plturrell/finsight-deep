@@ -1,0 +1,1 @@
+# gRPC stubs - placeholder for protobuf generated files

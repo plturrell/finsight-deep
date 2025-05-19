@@ -1,0 +1,73 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Base image with CUDA support
+FROM nvcr.io/nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3.11-distutils \
+    python3-pip \
+    git \
+    git-lfs \
+    wget \
+    curl \
+    build-essential \
+    cmake \
+    libboost-all-dev \
+    libeigen3-dev \
+    libopenblas-dev \
+    liblapack-dev \
+    libhdf5-dev \
+    graphviz \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for package management
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install Python packages
+RUN pip3 install --upgrade pip setuptools wheel
+
+# Create working directory
+WORKDIR /app
+
+# Copy project files
+COPY pyproject.toml uv.lock ./
+COPY src/ ./src/
+COPY packages/ ./packages/
+COPY examples/ ./examples/
+COPY tests/ ./tests/
+
+# Install AIQToolkit with all dependencies
+RUN uv sync --all-groups --all-extras
+
+# Install CUDA-specific packages
+RUN pip3 install \
+    cupy-cuda12x \
+    pycuda \
+    triton \
+    nvidia-ml-py3
+
+# Compile CUDA kernels
+COPY src/aiq/cuda_kernels/ ./src/aiq/cuda_kernels/
+RUN cd src/aiq/cuda_kernels && python setup.py
+
+# Set up environment for GUI support (optional)
+ENV DISPLAY=:0
+ENV QT_X11_NO_MITSHM=1
+
+# Expose ports
+EXPOSE 8000 8080 6006
+
+# Entry point
+ENTRYPOINT ["/bin/bash"]

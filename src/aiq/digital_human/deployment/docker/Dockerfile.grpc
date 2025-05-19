@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy proto files and compile them
+COPY protos/ ./protos/
+COPY audio2face_proto_compiler.py .
+RUN python audio2face_proto_compiler.py
+
+# Copy application files
+COPY nvidia_grpc_client.py .
+COPY finsight_grpc_production.py .
+
+# Expose port
+EXPOSE 8000
+
+# Run the application
+CMD ["python", "finsight_grpc_production.py"]

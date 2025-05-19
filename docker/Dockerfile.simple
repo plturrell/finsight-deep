@@ -1,0 +1,4 @@
+FROM python:3.10-alpine
+WORKDIR /app
+COPY test_nvidia_docker.py .
+CMD ["python", "test_nvidia_docker.py"]

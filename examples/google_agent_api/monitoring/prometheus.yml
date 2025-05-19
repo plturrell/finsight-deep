@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'google-agent-api'
+
+scrape_configs:
+  # Google Agent API metrics
+  - job_name: 'google-agent-api'
+    static_configs:
+      - targets: ['google-agent-api:9090']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Prometheus Pushgateway
+  - job_name: 'pushgateway'
+    static_configs:
+      - targets: ['prometheus-pushgateway:9091']
+    honor_labels: true
+
+  # Jaeger metrics
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+
+  # Node metrics (if using node-exporter)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+# Alerting rules
+rule_files:
+  - 'alerts.yml'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']

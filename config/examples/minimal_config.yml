@@ -1,0 +1,15 @@
+general:
+  front_end:
+    _type: fastapi
+    port: 8000
+    host: "0.0.0.0"
+    
+workflow:
+  _type: react_agent
+  llm_name: test_llm
+  tool_names: []
+  
+llms:
+  test_llm:
+    _type: nim
+    model_name: meta/llama-3.1-8b-instruct

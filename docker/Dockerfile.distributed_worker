@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+# Install Python and system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python alias
+RUN ln -s /usr/bin/python3.11 /usr/bin/python
+
+# Install AIQToolkit and dependencies
+WORKDIR /app
+COPY requirements-distributed.txt .
+RUN pip install --no-cache-dir -r requirements-distributed.txt
+
+# Install GPU-specific dependencies
+RUN pip install --no-cache-dir \
+    torch==2.1.0 \
+    torchvision==0.16.0 \
+    nvidia-ml-py==12.535.77
+
+# Copy source code
+COPY src/aiq /app/aiq
+
+# Create necessary directories
+RUN mkdir -p /certs /data /models
+
+# Environment variables
+ENV PYTHONPATH=/app
+ENV NODE_ROLE=worker
+ENV MANAGER_HOST=aiqtoolkit-manager
+ENV MANAGER_PORT=50051
+ENV WORKER_PORT=50052
+ENV ENABLE_TLS=true
+ENV ENABLE_AUTH=true
+ENV GPU_ENABLED=true
+ENV CUDA_VISIBLE_DEVICES=0
+
+# Expose ports
+EXPOSE 50052
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import grpc; grpc.channel_ready_future(grpc.insecure_channel('localhost:50052')).result(timeout=5)" || exit 1
+
+# Run worker
+CMD ["python", "-m", "aiq.distributed.worker", \
+     "--manager-host", "${MANAGER_HOST}", \
+     "--manager-port", "${MANAGER_PORT}", \
+     "--worker-port", "${WORKER_PORT}"]
